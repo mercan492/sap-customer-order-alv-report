@@ -1,0 +1,48 @@
+*&---------------------------------------------------------------------*
+*& Report ZCUSTOMER_ORDERS_ALV
+*&---------------------------------------------------------------------*
+*&AUTOR:MERCAN KÖSEOĞLU DATE:08.09.2025
+*&---------------------------------------------------------------------*
+REPORT ZCUSTOMER_ORDERS_ALV NO STANDARD PAGE HEADING.
+
+TABLES: vbak.
+TYPES: BEGIN OF ty_order,
+           vbeln TYPE vbak-vbeln, "Şipariş numarası
+           kunnr TYPE vbak-kunnr, "Müşteri numarası
+           erdat TYPE vbak-erdat, "Şipariş tarihi
+           vkorg TYPE vbak-vkorg, "Satış orginasyonu
+           vtweg TYPE vbak-vtweg, "Dağıtım kanalı
+           spart TYPE vbak-spart, "Bölüm
+       END OF ty_order.
+
+PARAMETERS: p_kunnr TYPE kunnr OBLIGATORY.
+SELECT-OPTIONS: s_date FOR vbak-erdat.
+
+DATA: gt_orders TYPE TABLE OF ty_order,
+      gs_order TYPE ty_order.
+DATA: gr_alv TYPE REF TO cl_salv_table.
+
+START-OF-SELECTION.
+SELECT vbeln kunnr erdat vkorg vtweg spart
+      FROM vbak
+  INTO TABLE gt_orders
+  WHERE kunnr = p_kunnr
+      AND erdat IN s_date.
+
+  IF sy-subrc <> 0.
+    MESSAGE 'Girilen kiriterlere uygun sipariş bulunamadı.' TYPE 'I'.
+    EXIT.
+  ENDIF.
+  END-OF-SELECTION.
+
+TRY.
+  cl_salv_table=>factory( IMPORTING r_salv_table = gr_alv
+         CHANGING t_table = gt_orders ).
+
+  gr_alv->get_display_settings( )->set_list_header( |Müşteri{ p_kunnr } için Sipariş Listesi| ).
+  gr_alv->get_columns( )->set_optimize( abap_true ).
+  gr_alv->display( ).
+
+  CATCH cx_salv_msg INTO DATA(lx_msg).
+       MESSAGE lx_msg->get_text( ) TYPE 'E'.
+ ENDTRY.
